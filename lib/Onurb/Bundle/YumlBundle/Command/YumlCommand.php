@@ -1,8 +1,8 @@
 <?php
 namespace Onurb\Bundle\YumlBundle\Command;
 
-use Onurb\Bundle\YumlBundle\Yuml\YumlClient;
-use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
+use Onurb\Bundle\YumlBundle\Yuml\YumlClientInterface;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -13,8 +13,63 @@ use Symfony\Component\Console\Output\OutputInterface;
  * @license MIT
  * @author Glynn Forrest <me@glynnforrest.com>
  **/
-class YumlCommand extends ContainerAwareCommand
+class YumlCommand extends Command
 {
+    /**
+     * @var \Onurb\Bundle\YumlBundle\Yuml\YumlClientInterface
+     */
+    private $yumlClient;
+    /**
+     * @var bool
+     */
+    private $showFileDescription;
+    /**
+     * @var array
+     */
+    private $colors;
+    /**
+     * @var array
+     */
+    private $notes;
+    /**
+     * @var string
+     */
+    private $style;
+    /**
+     * @var string
+     */
+    private $direction;
+    /**
+     * @var string
+     */
+    private $scale;
+    /**
+     * @var string
+     */
+    private $extension;
+
+    public function __construct (
+        YumlClientInterface $yumlClient,
+        bool $showFileDescription = true,
+        array $colors = [],
+        array $notes = [],
+        string $style = 'plain',
+        string $extension = 'png',
+        string $direction = 'TB',
+        string $scale = 'normal'
+    )
+    {
+        parent::__construct();
+        $this->yumlClient          = $yumlClient;
+        $this->showFileDescription = $showFileDescription;
+        $this->colors              = $colors;
+        $this->notes               = $notes;
+        $this->style               = $style;
+        $this->direction           = $direction;
+        $this->scale               = $scale;
+        $this->extension = $extension;
+    }
+
     protected function configure()
     {
         $this->setName('yuml:mappings')
@@ -30,26 +85,16 @@ class YumlCommand extends ContainerAwareCommand
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        /** @var YumlClient $yumlClient */
-        $yumlClient = $this->getContainer()->get('onurb_yuml.client');
         $filename = $input->getOption('filename');
 
-        $showDetailParam = $this->getContainer()->getParameter('onurb_yuml.show_fields_description');
-        $colorsParam = $this->getContainer()->getParameter('onurb_yuml.colors');
-        $notesParam = $this->getContainer()->getParameter('onurb_yuml.notes');
-        $styleParam = $this->getContainer()->getParameter('onurb_yuml.style');
-        $extensionParam = $this->getContainer()->getParameter('onurb_yuml.extension');
-        $direction = $this->getContainer()->getParameter('onurb_yuml.direction');
-        $scale = $this->getContainer()->getParameter('onurb_yuml.scale');
-
-        $graphUrl = $yumlClient->getGraphUrl(
-            $yumlClient->makeDslText($showDetailParam, $colorsParam, $notesParam),
-            $styleParam,
-            $extensionParam,
-            $direction,
-            $scale
+        $graphUrl = $this->yumlClient->getGraphUrl(
+            $this->yumlClient->makeDslText($this->showFileDescription, $this->colors, $this->notes),
+            $this->style,
+            $this->extension,
+            $this->direction,
+            $this->scale
         );
-        $yumlClient->downloadImage($graphUrl, $filename);
+        $this->yumlClient->downloadImage($graphUrl, $filename);
 
         $output->writeln(sprintf('Downloaded <info>%s</info> to <info>%s</info>', $graphUrl, $filename));
 
